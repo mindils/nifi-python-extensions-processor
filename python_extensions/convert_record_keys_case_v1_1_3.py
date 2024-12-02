@@ -5,12 +5,12 @@ class ConvertRecordKeysCase(RecordTransform):
     class Java:
         implements = ['org.apache.nifi.python.processor.RecordTransform']
     class ProcessorDetails:
-        version = '1.1.1'
+        version = '1.1.3'
         description = 'Converts record keys to lower or upper case.'
         tags = ['json', 'avro', 'case', 'keys']
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)  # Call the base class constructor
+        super().__init__()  # Ensure the parent class constructor is called
         self.convert_case = PropertyDescriptor(
             name="Convert to Lower Case",
             description="Specify \'true\' to convert keys to lower case, \'false\' to convert to upper case.",
