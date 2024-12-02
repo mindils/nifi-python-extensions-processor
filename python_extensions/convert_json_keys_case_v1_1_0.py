@@ -5,7 +5,7 @@ class ConvertRecordKeysCase(RecordTransform):
     class Java:
         implements = ['org.apache.nifi.python.processor.RecordTransform']
     class ProcessorDetails:
-        version = '1.1.0'
+        version = '1.0.0'
         description = 'Converts record keys to lower or upper case.'
         tags = ['json', 'avro', 'case', 'keys']
 
@@ -23,18 +23,26 @@ class ConvertRecordKeysCase(RecordTransform):
         return self.descriptors
 
     def transform(self, context, record, schema, attributemap):
-        # Get the property value
-        convert_to_lower_case = context.getProperty("Convert to Lower Case").getValue()
-        to_lower = convert_to_lower_case.lower() == 'true'
+        try:
+            # Получаем значение свойства
+            convert_to_lower_case = context.getProperty("Convert to Lower Case").getValue()
+            to_lower = convert_to_lower_case.lower() == 'true'
 
-        # Transform the keys in the record
-        new_record = self.convert_keys_case(record, to_lower)
+            # Преобразуем ключи в записи
+            new_record = self.convert_keys_case(record, to_lower)
 
-        return RecordTransformResult(
-            record=new_record
-        )
+            # Возвращаем преобразованный результат
+            return RecordTransformResult(
+                record=new_record,
+                schema=schema  # Используем ту же схему, что и у исходных данных
+            )
+        except Exception as e:
+            # Логируем ошибку для отладки
+            self.logger.error(f"Error processing record: {e}")
+            raise
 
     def convert_keys_case(self, data, to_lower):
+        """Рекурсивное преобразование ключей в нижний или верхний регистр"""
         if isinstance(data, dict):
             new_data = {}
             for key, value in data.items():
