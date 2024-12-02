@@ -5,14 +5,15 @@ class ConvertRecordKeysCase(RecordTransform):
     class Java:
         implements = ['org.apache.nifi.python.processor.RecordTransform']
     class ProcessorDetails:
-        version = '1.0.0'
+        version = '1.1.1'
         description = 'Converts record keys to lower or upper case.'
         tags = ['json', 'avro', 'case', 'keys']
 
     def __init__(self, **kwargs):
+        super().__init__(**kwargs)  # Call the base class constructor
         self.convert_case = PropertyDescriptor(
             name="Convert to Lower Case",
-            description="Specify 'true' to convert keys to lower case, 'false' to convert to upper case.",
+            description="Specify \'true\' to convert keys to lower case, \'false\' to convert to upper case.",
             default_value="true",
             required=True,
             validators=[StandardValidators.BOOLEAN_VALIDATOR]
@@ -23,26 +24,18 @@ class ConvertRecordKeysCase(RecordTransform):
         return self.descriptors
 
     def transform(self, context, record, schema, attributemap):
-        try:
-            # Получаем значение свойства
-            convert_to_lower_case = context.getProperty("Convert to Lower Case").getValue()
-            to_lower = convert_to_lower_case.lower() == 'true'
+        # Get the property value
+        convert_to_lower_case = context.getProperty("Convert to Lower Case").getValue()
+        to_lower = convert_to_lower_case.lower() == 'true'
 
-            # Преобразуем ключи в записи
-            new_record = self.convert_keys_case(record, to_lower)
+        # Transform the keys in the record
+        new_record = self.convert_keys_case(record, to_lower)
 
-            # Возвращаем преобразованный результат
-            return RecordTransformResult(
-                record=new_record,
-                schema=schema  # Используем ту же схему, что и у исходных данных
-            )
-        except Exception as e:
-            # Логируем ошибку для отладки
-            self.logger.error(f"Error processing record: {e}")
-            raise
+        return RecordTransformResult(
+            record=new_record
+        )
 
     def convert_keys_case(self, data, to_lower):
-        """Рекурсивное преобразование ключей в нижний или верхний регистр"""
         if isinstance(data, dict):
             new_data = {}
             for key, value in data.items():
