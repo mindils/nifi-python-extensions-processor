@@ -2,13 +2,13 @@ from nifiapi.flowfiletransform import FlowFileTransform, FlowFileTransformResult
 from nifiapi.properties import PropertyDescriptor, StandardValidators
 import re
 
-class ConvertJsonKeysCase(FlowFileTransform):
+class ConvertJsonKeysToCase(FlowFileTransform):
     class Java:
         implements = ['org.apache.nifi.python.processor.FlowFileTransform']
     class ProcessorDetails:
-        version = '1.0.0'
-        description = 'Converts JSON keys to lower or upper case.'
-        tags = ['json', 'case', 'keys']
+        version = '1.0.1'
+        description = 'Приводит ключи JSON к нижнему или верхнему регистру с использованием регулярных выражений. Поддерживает только текстовые JSON данные.'
+        tags = ['json', 'case', 'keys', 'regex', 'text', 'lowercase', 'uppercase']
 
     def __init__(self, **kwargs):
         self.convert_case = PropertyDescriptor(
