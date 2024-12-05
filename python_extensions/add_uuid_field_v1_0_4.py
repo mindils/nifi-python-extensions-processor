@@ -12,7 +12,7 @@ class AddUUIDField(RecordTransform):
 
     class ProcessorDetails:
         version = '1.0.4'
-        description = 'Adds a UUID field generated from a template to records, supports arrays of records, and outputs raw string for debugging'
+        description = 'Adds a UUID field generated from a template to records, supports arrays of records, integer timestamps, and outputs raw string for debugging'
 
     def __init__(self, **kwargs):
         super().__init__()  # Call the base class initializer
@@ -39,9 +39,9 @@ class AddUUIDField(RecordTransform):
             validators=[StandardValidators.NON_EMPTY_VALIDATOR]
         )
 
-        default_date_format = PropertyDescriptor(
+        input_date_format = PropertyDescriptor(
             name='Input Date Format',
-            description='The format of input date fields in the record',
+            description='The format of input date fields in the record (used if the date is a string)',
             default_value='YYYY-MM-DD HH:mm:ss',
             required=False
         )
@@ -53,22 +53,32 @@ class AddUUIDField(RecordTransform):
             required=False
         )
 
+        timestamp_units = PropertyDescriptor(
+            name='Timestamp Units',
+            description='Units of Unix timestamps (if input date is an integer). Options: seconds, milliseconds',
+            default_value='milliseconds',
+            required=False,
+            allowable_values=['seconds', 'milliseconds']
+        )
+
         self.descriptors = [
             field_name,
             debug_field_name,
             uuid_template,
-            default_date_format,
+            input_date_format,
             output_date_format,
+            timestamp_units,
         ]
         return self.descriptors
 
     def transform(self, context, record, schema, attributemap):
         # Get property values
-        field_name = context.getProperty('Field Name').evaluateAttributeExpressions(attributemap).getValue()
+        field_name = context.getProperty('Field Name').getValue()
         debug_field_name = context.getProperty('Debug Field Name').getValue()
-        uuid_template = context.getProperty('UUID Template').evaluateAttributeExpressions(attributemap).getValue()
-        input_date_format = context.getProperty('Input Date Format').evaluateAttributeExpressions(attributemap).getValue()
-        output_date_format = context.getProperty('Output Date Format').evaluateAttributeExpressions(attributemap).getValue()
+        uuid_template = context.getProperty('UUID Template').getValue()
+        input_date_format = context.getProperty('Input Date Format').getValue()
+        output_date_format = context.getProperty('Output Date Format').getValue()
+        timestamp_units = context.getProperty('Timestamp Units').getValue()
 
         # Function to convert date format
         def convert_date_format(format_str):
@@ -105,14 +115,24 @@ class AddUUIDField(RecordTransform):
                 field_part = extract_field_name(field_part)
                 func_part = func_part.strip()
                 field_value = rec.get(field_part, '')
-                if not field_value:
+                if field_value == '':
                     self.logger.error(f'Field {field_part} not found in record')
                     return ''
                 if func_part.startswith('date'):
                     try:
-                        # Parse the input date
-                        parse_format = convert_date_format(input_date_format)
-                        date_obj = datetime.strptime(field_value, parse_format)
+                        # Determine if field_value is an integer timestamp
+                        if isinstance(field_value, int) or (isinstance(field_value, str) and field_value.isdigit()):
+                            # Convert to integer
+                            timestamp = int(field_value)
+                            # Adjust for units
+                            if timestamp_units == 'milliseconds':
+                                timestamp = timestamp / 1000.0  # Convert to seconds
+                            # Create datetime object from timestamp
+                            date_obj = datetime.utcfromtimestamp(timestamp)
+                        else:
+                            # Assume field_value is a date string
+                            parse_format = convert_date_format(input_date_format)
+                            date_obj = datetime.strptime(field_value, parse_format)
 
                         # Format the output date
                         output_format = convert_date_format(output_date_format)
@@ -127,7 +147,7 @@ class AddUUIDField(RecordTransform):
             else:
                 field_name_inner = extract_field_name(expression)
                 field_value = rec.get(field_name_inner, '')
-                if not field_value:
+                if field_value == '':
                     self.logger.error(f'Field {field_name_inner} not found in record')
                 return str(field_value)
 
